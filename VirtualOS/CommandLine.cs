@@ -2,7 +2,7 @@ using System;
 
 namespace VirtualOS
 {
-    public class CommandLine
+    public static class CommandLine
     {
         public static void ColorLog(string message, ConsoleColor color=ConsoleColor.White, bool newLine=true)
         {
@@ -36,5 +36,6 @@ namespace VirtualOS
         {
             ColorLog(message, ConsoleColor.Red);
         }
+        public static void ClearScreen() => Console.Clear();
     }
 }
