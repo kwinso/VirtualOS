@@ -14,15 +14,15 @@ namespace VirtualOS.Install
     public class SystemInstaller
     {
         private InstallingInfo _info;
+        // This variable represents file when all system is stored
         private ZipArchive _systemFile;
-
         /*
+         DIRECTORIES IN THE SYSTEM ROOT
          sys: Folder for all system files, like config and executables
          home: Folder for users accounts, similar to Linux /home folder
         */
         private readonly string[] _rootDirectories = new string[] {"sys", "home"};
         
-        // Returning path to the config .vos file after installing
         public void Install()
         {
             CommandLine.ColorLog("Installing VirtualOS", ConsoleColor.Green);
@@ -33,9 +33,10 @@ namespace VirtualOS.Install
                 CommandLine.ColorLog("Installing VirtualOS System...", ConsoleColor.Green);
                 
                 CreateSystemFile();
-                CreateSystemFolders();
+                InstallSystemFiles();
                 
-                ProcessPostInstallOperations();
+                ConfigureSystem();
+                
                 _systemFile.Dispose();
             }
             catch (Exception e)
@@ -46,16 +47,15 @@ namespace VirtualOS.Install
                 throw;
             }
         }
-        
-        #region Pre-Installation Operations
-        // collect all data from user before start the installation
+        #region Define System Information
+        /*
+            This section is used for defining all data needed while installing the system
+        */
         private void DefineSystemInfo()
         {
             DefineSystemInstallDirectory();
             DefineSystemName();
         }
-
-        #region Define System Information
         private void DefineSystemInstallDirectory()
         {
             while (true)
@@ -86,20 +86,26 @@ namespace VirtualOS.Install
                 break;
             }
         }
-
         #endregion
+
+        #region System Installaton
+        /*
+            All Operations needed to install the system
+        */
         
-        
+        // Creates and Defines system file to install system in 
         private void CreateSystemFile()
         {
             CommandLine.DefaultLog($"Creating {_info.SystemName}.vos system in {_info.InstallDir}");
             
             var systemFilePath = $"{_info.InstallDir}/{_info.SystemName}.vos";
             
-            FileStream systemVos = File.Open($"{systemFilePath}", FileMode.Create);
-            _systemFile = new ZipArchive(systemVos, ZipArchiveMode.Update);
+            FileStream systemFile = File.Open($"{systemFilePath}", FileMode.Create);
+            _systemFile = new ZipArchive(systemFile, ZipArchiveMode.Update);
         }
-        private void CreateSystemFolders()
+        
+        // Create All Basic Files and Directories for system
+        private void InstallSystemFiles()
         {
             CommandLine.DefaultLog("Creating Directories...");
             
@@ -110,9 +116,9 @@ namespace VirtualOS.Install
             CreateSystemInfoFile();
             CreateUsersDirectory();
         }
-        #endregion
-
-        #region System Installaton
+        
+        // sysinfo is needed to define information about the system, such as System Name, etc.
+        // It uses SystemInfo class as the template to store the data
         private void CreateSystemInfoFile()
         {
             try
@@ -130,6 +136,8 @@ namespace VirtualOS.Install
                 throw;
             }
         }
+        
+        // Users directory is a directory where all users' accounts data stored
         private void CreateUsersDirectory()
         {
             CommandLine.DefaultLog("Creating users directory...");
@@ -141,18 +149,24 @@ namespace VirtualOS.Install
             }
         }
         #endregion
+        
+        #region System Configuration Operations
 
-        #region Post-install operations
-
-        private void ProcessPostInstallOperations()
+        /*
+         This Section is used to configure system after installing.
+         For example, create very first user on system.
+        */
+        private void ConfigureSystem()
         {
+            CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Green);
+            
             CreateRootUser();
-            CommandLine.ColorLog("System successfully installed.", ConsoleColor.Green);
+            
+            CommandLine.ColorLog("System successfully configured.", ConsoleColor.Green);
         }
         
         private void CreateRootUser()
         {
-            CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Green);
                 
             var usersDir = "sys/usr";
             var usersFile = _systemFile.CreateEntry($"{usersDir}/users.info");
@@ -172,6 +186,7 @@ namespace VirtualOS.Install
         private void GetRootUserInfo(out string userName, out string userPass)
         {
             CommandLine.ColorLog("Creating root account.", ConsoleColor.Magenta);
+            
             userName = CommandLine.GetInput("Root User Name");
             while (true)
             {
@@ -186,6 +201,5 @@ namespace VirtualOS.Install
             }
         }
         #endregion
-
     }
 }
