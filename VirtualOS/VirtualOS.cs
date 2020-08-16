@@ -1,4 +1,5 @@
 ﻿using System;
+using VirtualOS.Boot;
 
 namespace VirtualOS
 {

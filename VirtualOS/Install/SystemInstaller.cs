@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Xml.Serialization;
+using VirtualOS.OperatingSystem;
 
 namespace VirtualOS.Install
 {
@@ -12,14 +13,14 @@ namespace VirtualOS.Install
     }
     public class SystemInstaller
     {
-        private InstallingInfo _info = new InstallingInfo();
+        private InstallingInfo _info;
         private ZipArchive _systemFile;
 
         /*
          sys: Folder for all system files, like config and executables
          home: Folder for users accounts, similar to Linux /home folder
         */
-        private string[] _defaultDirectories = new string[2] {"sys", "home"};
+        private readonly string[] _defaultDirectories = new string[] {"sys", "home"};
         
         // Returning path to the config .vos file after installing
         public void Install()
@@ -44,7 +45,7 @@ namespace VirtualOS.Install
                 throw;
             }
         }
-
+        
         #region Pre-Installation Operations
         // collect all data from user before start the installation
         private void GetSystemInfo()
@@ -106,14 +107,13 @@ namespace VirtualOS.Install
             CommandLine.ColorLog("System Directories Created.", ConsoleColor.Green);
         }
         #endregion
-
         // Fills sys directory with all needed system files
         private void FillSystemDirectory()
         { 
             CreateSystemInfoDir();
             CreateUsersDir();
         }
-
+        
         #region System Installaton
         private void CreateSystemInfoDir()
         {
@@ -129,7 +129,7 @@ namespace VirtualOS.Install
                     serializer.Serialize(tw, sysInfo);
                 }
             }
-            catch (Exception e)
+            catch
             {
                 CommandLine.Error("Error While creating system info file.");
                 throw;
@@ -171,13 +171,12 @@ namespace VirtualOS.Install
                 
                 CommandLine.ColorLog("First user Created.", ConsoleColor.Green);
             }
-            catch (Exception e)
+            catch
             {
                 CommandLine.Error("Error while creating root user");
                 throw;
             }
         }
-
         #endregion
     }
 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace VirtualOS
+namespace VirtualOS.OperatingSystem
 {
     public static class CommandLine
     {

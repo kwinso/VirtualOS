@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace VirtualOS
+namespace VirtualOS.OperatingSystem
 {
     [Serializable]
     public class SystemInfo : ISerializable
@@ -16,12 +16,11 @@ namespace VirtualOS
         {
             info.AddValue("SystemName", SystemName);
         }
-
         public SystemInfo(SerializationInfo info, StreamingContext context)
         {
             SystemName = (string) info.GetValue("SystemName", typeof(string));
         }
-        // A parameterless constructor.
+        // A parameterless constructor for serialization
         public SystemInfo() {}
     }
 }

@@ -1,16 +1,14 @@
 using System;
 using System.IO;
 using VirtualOS.Install;
-using System.IO.Compression;
-using System.Runtime.Serialization.Formatters.Binary;
+using VirtualOS.OperatingSystem;
 
-namespace VirtualOS
+namespace VirtualOS.Boot
 {
     enum BootMode {BootExisting, InstallNew}
     public class BootManager
     {
-        private string _systemPath;
-        private System _system;                
+        private OperatingSystem.System _system;                
 
         public void Boot()
         {
@@ -23,7 +21,6 @@ namespace VirtualOS
                 try
                 {
                     systemInstaller.Install();
-                    systemInstaller = null;
                     CommandLine.ColorLog("System installed.", ConsoleColor.Green);
                     CommandLine.GetInput("Press enter to reboot");
                     CommandLine.ClearScreen();
@@ -44,7 +41,7 @@ namespace VirtualOS
 
         private void StartSystem(string systemInfo)
         {
-            _system = new System(systemInfo);
+            _system = new OperatingSystem.System(systemInfo);
             _system.Exited += SystemExit;
         }
         private BootMode SelectBootMode()
@@ -55,11 +52,7 @@ namespace VirtualOS
                 string input = CommandLine.GetInput("Mode");
                 if (input == "1") return BootMode.BootExisting;
                 else if (input == "2") return BootMode.InstallNew;
-                else
-                {
-                    CommandLine.Error("Invalid Option. Select 1 or 2.");
-                    continue;
-                }
+                else CommandLine.Error("Invalid Option. Select 1 or 2.");
             }
         }
         private string SelectSystem()
@@ -74,25 +67,18 @@ namespace VirtualOS
                     if (!systemPath.EndsWith(".vos"))
                     {
                         CommandLine.Error("Invalid type of system file!");
-                    }
-                    else if (File.Exists(systemPath))
-                    {
-                        return systemPath;
-                    }
-                    else
-                    {
-                        CommandLine.Error("No System Config File found.");
                         continue;
                     }
+                    else if (File.Exists(systemPath)) return systemPath;
+                    else CommandLine.Error("No System File found.");
                 }
                 catch
                 {
-                    CommandLine.Error($"Error while reading System Config File");
-                    continue;
+                    CommandLine.Error($"Error while reading System File");
+                    throw;
                 }
             }
         }
-
         private void SystemExit()
         {
             CommandLine.DefaultLog("System work cancelled. Exiting...");
