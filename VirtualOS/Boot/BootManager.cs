@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using VirtualOS.Install;
+using System.IO.Compression;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace VirtualOS
@@ -12,10 +14,8 @@ namespace VirtualOS
 
         public void Boot()
         {
-            string systemPath;
             CommandLine.ColorLog("Welcome to the VirtualOS Boot Manager.", ConsoleColor.Cyan);
             Start:
-            // TODO: Boot system from Systems Config / VirtualOS Folder
             var selected = SelectBootMode();
             if (selected == BootMode.InstallNew)
             {
@@ -23,12 +23,13 @@ namespace VirtualOS
                 try
                 {
                     systemInstaller.Install();
+                    systemInstaller = null;
                     CommandLine.ColorLog("System installed.", ConsoleColor.Green);
                     CommandLine.GetInput("Press enter to reboot");
                     CommandLine.ClearScreen();
                     goto Start;
                 }
-                catch (Exception e)
+                catch
                 {
                     CommandLine.Error("System not installed.\nRestarting Boot Manager.");
                     goto Start;
@@ -36,12 +37,12 @@ namespace VirtualOS
             }
             else
             {
-                var systemInfo = SelectSystem();
-                StartSystem(systemInfo);
+                var systemPath = SelectSystem();
+                StartSystem(systemPath);
             }
         }
 
-        private void StartSystem(SystemInfo systemInfo)
+        private void StartSystem(string systemInfo)
         {
             _system = new System(systemInfo);
             _system.Exited += SystemExit;
@@ -61,34 +62,22 @@ namespace VirtualOS
                 }
             }
         }
-
-        private SystemInfo SelectSystem()
+        private string SelectSystem()
         {
             CommandLine.ColorLog("Select path to\nVirtualOS System folder\nor to\nSystems Config", ConsoleColor.Green);
-            BinaryFormatter bf = new BinaryFormatter();
-            Stream stream;
-            SystemInfo info;
             while (true)
             {
-                var systemPath = CommandLine.GetInput("Path");
+                var systemPath = CommandLine.GetInput("Path to .vos file");
                 try
                 {
                     // If directory found, check for .vos files and run with the first one
-                    if (Directory.Exists(systemPath))
+                    if (!systemPath.EndsWith(".vos"))
                     {
-                        var configFiles = Directory.GetFiles(systemPath, "*.vos");
-                        if (configFiles.Length == 0)
-                        {
-                            CommandLine.Error($"No .vos files found in {systemPath}");
-                            continue;
-                        }
-                        CommandLine.ColorLog($"Reading {configFiles[0]} config file.", ConsoleColor.Green);
-                        stream = File.Open(configFiles[0], FileMode.Open);
-                        info = (SystemInfo) bf.Deserialize(stream);
-                    } else if (systemPath.EndsWith(".vos")) // If config file specified
+                        CommandLine.Error("Invalid type of system file!");
+                    }
+                    else if (File.Exists(systemPath))
                     {
-                        stream = File.Open(systemPath, FileMode.Open);
-                        info = (SystemInfo) bf.Deserialize(stream);
+                        return systemPath;
                     }
                     else
                     {
@@ -96,13 +85,11 @@ namespace VirtualOS
                         continue;
                     }
                 }
-                catch (Exception e)
+                catch
                 {
                     CommandLine.Error($"Error while reading System Config File");
                     continue;
                 }
-                
-                return info;
             }
         }
 
