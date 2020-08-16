@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Xml.Serialization;
+using VirtualOS.OperatingSystem.StatusCodes;
 
 namespace VirtualOS.OperatingSystem
 {
@@ -10,9 +11,8 @@ namespace VirtualOS.OperatingSystem
         private ZipArchive _sys;
         private SystemInfo _info;
         private SystemUser _user;
-
-        public delegate void SystemEventHandler();
-        public event SystemEventHandler Exited;
+        private string _currLocation = "/";
+        private CommandProcessor _commandProcessor = new CommandProcessor();
         
         public System(string systemPath)
         {
@@ -20,24 +20,39 @@ namespace VirtualOS.OperatingSystem
             {
                 CommandLine.ClearScreen();
                 _sys = ZipFile.Open(systemPath, ZipArchiveMode.Update);
-                Start();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 CommandLine.Error("Could not run the system.");
-                // CommandLine.DefaultLog(e.Message);
             }
         }
 
-        private void Start()
+        private void ClearSystem()
         {
-            CommandLine.DefaultLog($"Welcome to the system.");
+            _sys.Dispose();
+            _commandProcessor = null;
+        }
+        public SystemExitCode Start()
+        {
+            CommandLine.DefaultLog("Welcome to the system.");
             GetSystemInfo();
-            SystemLogin();
-            CommandLine.UserPrompt(_user.Name, _info.SystemName);
+            LoginUser();
+            var exitCode = StartProcessingCommands();
+            ClearSystem();
+            if (exitCode == CommandProcessorCode.RebootRequest) return SystemExitCode.Reboot;
+            return SystemExitCode.Shutdown;
         }
 
+        private CommandProcessorCode StartProcessingCommands()
+        {
+            while (true)
+            {
+                var command = CommandLine.UserPrompt(_user.Name, _info.SystemName, _currLocation);
+                var processedCode = _commandProcessor.Command(command);
+                if (processedCode != CommandProcessorCode.Processed) return processedCode;
+            }
+        }
 
         private void GetSystemInfo()
         {
@@ -48,7 +63,7 @@ namespace VirtualOS.OperatingSystem
                 _info = (SystemInfo) serializer.Deserialize(sr);
             }
         }
-        private void SystemLogin()
+        private void LoginUser()
         {
             try
             {
@@ -60,11 +75,10 @@ namespace VirtualOS.OperatingSystem
                         CommandLine.Error("No user found with name " + name);
                         continue;
                     }
-
                     var password = CommandLine.GetInput($"{name}'s password");
                     if (!ValidPassword(name, password))
                     {
-                        CommandLine.Error("Ivalid password for user: " + name);
+                        CommandLine.Error("Invalid password for user: " + name);
                         continue;
                     }
 
@@ -73,7 +87,7 @@ namespace VirtualOS.OperatingSystem
                     break;
                 }
             }
-            catch (Exception e)
+            catch
             {
                 CommandLine.Error("Error while logging into the system");
                 throw;

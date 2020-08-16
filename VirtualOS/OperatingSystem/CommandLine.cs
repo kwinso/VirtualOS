@@ -18,9 +18,9 @@ namespace VirtualOS.OperatingSystem
             Console.Write(message);
         }
 
-        public static string UserPrompt(string user = "loader", string system="boot")
+        public static string UserPrompt(string user, string system, string location)
         {
-            ColorLog($"{user}@{system} # ", ConsoleColor.DarkYellow, false);
+            ColorLog($"{user}@{system} [{location}]# ", ConsoleColor.DarkYellow, false);
             string input = Console.ReadLine();
             return input;
         }

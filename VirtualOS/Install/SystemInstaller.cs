@@ -8,7 +8,7 @@ namespace VirtualOS.Install
 {
     public struct InstallingInfo
     {
-        public string InstallingDir;
+        public string InstallDir;
         public string SystemName;
     }
     public class SystemInstaller
@@ -20,7 +20,7 @@ namespace VirtualOS.Install
          sys: Folder for all system files, like config and executables
          home: Folder for users accounts, similar to Linux /home folder
         */
-        private readonly string[] _defaultDirectories = new string[] {"sys", "home"};
+        private readonly string[] _rootDirectories = new string[] {"sys", "home"};
         
         // Returning path to the config .vos file after installing
         public void Install()
@@ -28,18 +28,19 @@ namespace VirtualOS.Install
             CommandLine.ColorLog("Installing VirtualOS", ConsoleColor.Green);
             try
             {
-                GetSystemInfo();
+                DefineSystemInfo();
+                
                 CommandLine.ColorLog("Installing VirtualOS System...", ConsoleColor.Green);
                 
-                CreateAndCompressSystemDirectory();
-                CreateDefaultFolders();
-                FillSystemDirectory();
-
+                CreateSystemFile();
+                CreateSystemFolders();
+                
+                ProcessPostInstallOperations();
                 _systemFile.Dispose();
             }
             catch (Exception e)
             {
-                var systemFile = $"{_info.InstallingDir}/${_info.SystemName}.vos";
+                var systemFile = $"{_info.InstallDir}/${_info.SystemName}.vos";
                 if (File.Exists(systemFile)) File.Delete(systemFile);
                 CommandLine.ColorLog("Error while installing: " + e);
                 throw;
@@ -48,9 +49,15 @@ namespace VirtualOS.Install
         
         #region Pre-Installation Operations
         // collect all data from user before start the installation
-        private void GetSystemInfo()
+        private void DefineSystemInfo()
         {
-            // Directory to install system
+            DefineSystemInstallDirectory();
+            DefineSystemName();
+        }
+
+        #region Define System Information
+        private void DefineSystemInstallDirectory()
+        {
             while (true)
             {
                 var installDirectory = CommandLine.GetInput("VirtualOS install directory");
@@ -59,14 +66,17 @@ namespace VirtualOS.Install
                     CommandLine.Error($"Directory \"{installDirectory}\" not found.");
                     continue;
                 }
-                _info.InstallingDir = installDirectory;
+                _info.InstallDir = installDirectory;
                 break;
             }
-            // Name for the system
+        }
+        private void DefineSystemName()
+        {
             while (true)
             {
+                
                 var systemName = CommandLine.GetInput("System name");
-                if (File.Exists($"{_info.InstallingDir}/{systemName}.vos"))
+                if (File.Exists($"{_info.InstallDir}/{systemName}.vos"))
                 {
                     CommandLine.Error($"System {systemName} already exists in given path.");
                     continue;
@@ -76,58 +86,43 @@ namespace VirtualOS.Install
                 break;
             }
         }
-        
-        private void CreateAndCompressSystemDirectory()
-        {
-            CommandLine.DefaultLog($"Creating {_info.SystemName}.vos system in {_info.InstallingDir}");
-            
-            // Create System Directory, then zip it and delete source dir
-            var systemDirPath = $"{_info.InstallingDir}";
 
-            Directory.CreateDirectory($"{systemDirPath}/{_info.SystemName}");
-            Directory.SetCurrentDirectory($"{systemDirPath}");
+        #endregion
+        
+        
+        private void CreateSystemFile()
+        {
+            CommandLine.DefaultLog($"Creating {_info.SystemName}.vos system in {_info.InstallDir}");
             
-            // Create system file and then delete directory it was created from
-            ZipFile.CreateFromDirectory($"./{_info.SystemName}", $"./{_info.SystemName}.vos");
-            Directory.Delete($"./{_info.SystemName}");
+            var systemFilePath = $"{_info.InstallDir}/{_info.SystemName}.vos";
             
-            // Set system to the created file
-            FileStream systemVos = File.Open($"{_info.InstallingDir}/{_info.SystemName}.vos", FileMode.Open);
+            FileStream systemVos = File.Open($"{systemFilePath}", FileMode.Create);
             _systemFile = new ZipArchive(systemVos, ZipArchiveMode.Update);
         }
-        
-        // This function creates all Template Folders
-        private void CreateDefaultFolders()
+        private void CreateSystemFolders()
         {
             CommandLine.DefaultLog("Creating Directories...");
-            foreach (var dir in _defaultDirectories)
-            {
+            
+            foreach (var dir in _rootDirectories)
                 _systemFile.CreateEntry($"{dir}/");
-            }
+            
             CommandLine.ColorLog("System Directories Created.", ConsoleColor.Green);
+            CreateSystemInfoFile();
+            CreateUsersDirectory();
         }
         #endregion
-        // Fills sys directory with all needed system files
-        private void FillSystemDirectory()
-        { 
-            CreateSystemInfoDir();
-            CreateUsersDir();
-        }
-        
+
         #region System Installaton
-        private void CreateSystemInfoDir()
+        private void CreateSystemInfoFile()
         {
             try
             {
                 var sysInfo = new SystemInfo(_info.SystemName);
-                
-                var infoDirPath = "sys/sysinfo.xml";
-                var infoFile = _systemFile.CreateEntry($"{infoDirPath}");
-                using (var tw = new StreamWriter(infoFile.Open()))
-                {
-                    XmlSerializer serializer = new XmlSerializer(typeof(SystemInfo));
-                    serializer.Serialize(tw, sysInfo);
-                }
+                var infoFile = _systemFile.CreateEntry("sys/sysinfo.xml");
+
+                using var sr = new StreamWriter(infoFile.Open());
+                var serializer = new XmlSerializer(typeof(SystemInfo));
+                serializer.Serialize(sr, sysInfo);
             }
             catch
             {
@@ -135,13 +130,49 @@ namespace VirtualOS.Install
                 throw;
             }
         }
-        // Create first user and Directory for managing Users
-        private void CreateUsersDir()
+        private void CreateUsersDirectory()
         {
-            CommandLine.DefaultLog("Creating users directory..."); 
+            CommandLine.DefaultLog("Creating users directory...");
+            try { _systemFile.CreateEntry("sys/usr/"); }
+            catch
+            {
+                CommandLine.Error("Error while users directory.");
+                throw;
+            }
+        }
+        #endregion
+
+        #region Post-install operations
+
+        private void ProcessPostInstallOperations()
+        {
+            CreateRootUser();
+            CommandLine.ColorLog("System successfully installed.", ConsoleColor.Green);
+        }
+        
+        private void CreateRootUser()
+        {
+            CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Green);
+                
+            var usersDir = "sys/usr";
+            var usersFile = _systemFile.CreateEntry($"{usersDir}/users.info");
+            var passwordsFile = _systemFile.CreateEntry($"{usersDir}/passwd.info"); // TODO: Make this file encrypted
+                
+            GetRootUserInfo(out var userName, out var userPass);
+                
+            using (StreamWriter writer = new StreamWriter(usersFile.Open()))
+                writer.WriteLine($"{userName}:root, {userName}");
+                
+            using (StreamWriter writer = new StreamWriter(passwordsFile.Open()))
+                writer.WriteLine($"{userName}:{userPass}");
+                
+            CommandLine.ColorLog("First user Created.", ConsoleColor.Green);
+        }
+        
+        private void GetRootUserInfo(out string userName, out string userPass)
+        {
             CommandLine.ColorLog("Creating root account.", ConsoleColor.Magenta);
-            var userName = CommandLine.GetInput("Root User Name");
-            string userPass;
+            userName = CommandLine.GetInput("Root User Name");
             while (true)
             {
                 userPass = CommandLine.GetInput("Root User Password");
@@ -153,30 +184,8 @@ namespace VirtualOS.Install
                 }
                 break;
             }
-            try
-            {
-                var usersDir = "sys/usr";
-                _systemFile.CreateEntry(usersDir + "/");
-                
-                var usersFile = _systemFile.CreateEntry($"{usersDir}/users.info");
-                // TODO: Make this file encrypted
-                var passwordsFile = _systemFile.CreateEntry($"{usersDir}/passwd.info");
-
-                // Creating First user with ROOT and own group
-                using (StreamWriter writer = new StreamWriter(usersFile.Open()))
-                    writer.WriteLine($"{userName}:root, {userName}");
-                
-                using (StreamWriter writer = new StreamWriter(passwordsFile.Open()))
-                    writer.WriteLine($"{userName}:{userPass}");
-                
-                CommandLine.ColorLog("First user Created.", ConsoleColor.Green);
-            }
-            catch
-            {
-                CommandLine.Error("Error while creating root user");
-                throw;
-            }
         }
         #endregion
+
     }
 }
