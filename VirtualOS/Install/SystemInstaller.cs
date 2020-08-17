@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using VirtualOS.OperatingSystem;
+using VirtualOS.Encryption;
 
 namespace VirtualOS.Install
 {
@@ -72,6 +74,7 @@ namespace VirtualOS.Install
         }
         private void DefineSystemName()
         {
+            var acceptableSymbols = new Regex(@"^[a-zA-Z]+$");
             while (true)
             {
                 
@@ -80,6 +83,12 @@ namespace VirtualOS.Install
                 {
                     CommandLine.Error($"System {systemName} already exists in given path.");
                     continue;
+                }
+                
+                if (String.IsNullOrEmpty(systemName) || systemName.Length < 5 || !acceptableSymbols.IsMatch(systemName) )
+                {
+                    CommandLine.Error("System name shouldn't be empty or less than 5 symbols and contain only letters.");
+                    continue;   
                 }
 
                 _info.SystemName = systemName;
@@ -160,12 +169,12 @@ namespace VirtualOS.Install
         {
             CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Green);
             
-            CreateRootUser();
+            CreateUser();
             
             CommandLine.ColorLog("System successfully configured.", ConsoleColor.Green);
         }
         
-        private void CreateRootUser()
+        private void CreateUser()
         {
                 
             var usersDir = "sys/usr";
@@ -173,6 +182,7 @@ namespace VirtualOS.Install
             var passwordsFile = _systemFile.CreateEntry($"{usersDir}/passwd.info"); // TODO: Make this file encrypted
                 
             GetRootUserInfo(out var userName, out var userPass);
+            userPass = Encryptor.GenerateHash(userPass);
                 
             using (StreamWriter writer = new StreamWriter(usersFile.Open()))
                 writer.WriteLine($"{userName}:root, {userName}");
@@ -180,17 +190,17 @@ namespace VirtualOS.Install
             using (StreamWriter writer = new StreamWriter(passwordsFile.Open()))
                 writer.WriteLine($"{userName}:{userPass}");
                 
-            CommandLine.ColorLog("First user Created.", ConsoleColor.Green);
+            CommandLine.ColorLog("User Created.", ConsoleColor.Green);
         }
         
         private void GetRootUserInfo(out string userName, out string userPass)
         {
-            CommandLine.ColorLog("Creating root account.", ConsoleColor.Magenta);
+            CommandLine.ColorLog("Creating account.", ConsoleColor.Magenta);
             
-            userName = CommandLine.GetInput("Root User Name");
+            userName = CommandLine.GetInput("User Name");
             while (true)
             {
-                userPass = CommandLine.GetInput("Root User Password");
+                userPass = CommandLine.GetInput("User Password");
                 var userPassRepeat = CommandLine.GetInput("Repeat Password");
                 if (userPass != userPassRepeat)
                 {

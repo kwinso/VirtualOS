@@ -18,9 +18,9 @@ namespace VirtualOS.OperatingSystem
             Console.Write(message);
         }
 
-        public static string UserPrompt(string user, string system, string location)
+        public static string UserPrompt(string user, string system)
         {
-            ColorLog($"{user}@{system} [{location}]# ", ConsoleColor.DarkYellow, false);
+            ColorLog($"{user}@{system} % ", ConsoleColor.DarkYellow, false);
             string input = Console.ReadLine();
             return input;
         }
@@ -29,7 +29,7 @@ namespace VirtualOS.OperatingSystem
         {
             ColorLog($"{prefix}: ", ConsoleColor.DarkGreen, false);
             string input = Console.ReadLine();
-            return input;
+            return input?.Trim();
         }
         
         public static void Error(string message)

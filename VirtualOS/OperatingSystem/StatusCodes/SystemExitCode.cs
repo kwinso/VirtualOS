@@ -4,6 +4,6 @@ namespace VirtualOS.OperatingSystem.StatusCodes
     {
         Shutdown,
         Reboot,
-        ErrorExit
+        SystemBroken
     }
 }

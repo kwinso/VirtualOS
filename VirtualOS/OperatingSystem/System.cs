@@ -1,26 +1,26 @@
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Xml.Serialization;
+using VirtualOS.Encryption;
+using VirtualOS.OperatingSystem.Files;
 using VirtualOS.OperatingSystem.StatusCodes;
 
 namespace VirtualOS.OperatingSystem
 {
     public class System
     {
-        private readonly ZipArchive _sys;
+        private FileSystem _fileSystem;
         private SystemInfo _info;
         private SystemUser _user;
-        private string _currLocation = "/";
-        private CommandProcessor _commandProcessor = new CommandProcessor();
+        private CommandProcessor _commandProcessor;
         
         public System(string systemPath)
         {
             try
             {
-                // On create, system will load system file into memory
+                // On create, system will create file system to operate with data
                 CommandLine.ClearScreen();
-                _sys = ZipFile.Open(systemPath, ZipArchiveMode.Update);
+                _fileSystem = new FileSystem(systemPath);
             }
             catch (Exception e)
             {
@@ -32,31 +32,40 @@ namespace VirtualOS.OperatingSystem
         // This method is used for clear all data about system in memory before shutting the system down
         private void ClearSystem()
         {
-            _sys.Dispose();
+            _fileSystem.Close();
             _commandProcessor = null;
         }
         public SystemExitCode Start()
         {
             CommandLine.DefaultLog("Welcome to the system.");
-            GetSystemInfo();
-            LoginUser();
+            try
+            {
+                GetSystemInfo();
+                LoginUser();
+            }
+            catch (Exception e)
+            {
+                CommandLine.Error("An error occured while starting the system;");
+                return SystemExitCode.SystemBroken;
+            }
             
+            _commandProcessor = new CommandProcessor(_user, _info, ref _fileSystem);
+
             // When processing commands is done, system will receive exit code of Command Processor
-            var exitCode = StartProcessingCommands();
+            var exitCode = StartCommandProcessor();
             
             ClearSystem();
             // System will ask the boot manager to reboot if there was request from Command Processor
             if (exitCode == CommandProcessorCode.RebootRequest) return SystemExitCode.Reboot;
             return SystemExitCode.Shutdown;
         }
-        
+
         // Read the user input and give the command to the Command Processor
-        private CommandProcessorCode StartProcessingCommands()
+        private CommandProcessorCode StartCommandProcessor()
         {
             while (true)
             {
-                var command = CommandLine.UserPrompt(_user.Name, _info.SystemName, _currLocation);
-                var processedCode = _commandProcessor.Command(command);
+                var processedCode = _commandProcessor.ProcessCommands();
                 // If there's no default exit code, stop the processor with given exit code
                 if (processedCode != CommandProcessorCode.Processed) return processedCode;
             }
@@ -65,11 +74,19 @@ namespace VirtualOS.OperatingSystem
         // Load system info from sysinfo file
         private void GetSystemInfo()
         {
-            var infoFile = _sys.GetEntry("sys/sysinfo.xml");
-            using (Stream sr = infoFile.Open())
+            try
             {
-                XmlSerializer serializer = new XmlSerializer(typeof(SystemInfo));
-                _info = (SystemInfo) serializer.Deserialize(sr);
+                var infoFile = _fileSystem.GetFile("sys/sysinfo.xml");
+                using (Stream sr = infoFile.Open())
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof(SystemInfo));
+                    _info = (SystemInfo) serializer.Deserialize(sr);
+                }
+            }
+            catch (NullReferenceException e)
+            {
+                CommandLine.Error("System's broken: No system information file file.");
+                throw;
             }
         }
         
@@ -93,8 +110,7 @@ namespace VirtualOS.OperatingSystem
                         continue;
                     }
 
-                    _user = new SystemUser(name, $"/home/{name}");
-                    AddUserGroups();
+                    _user = new SystemUser(name);
                     break;
                 }
             }
@@ -103,30 +119,36 @@ namespace VirtualOS.OperatingSystem
                 CommandLine.Error("Error while logging into the system");
                 throw;
             }
-            
         }
-
-        // Try to find the user in users config file
+        
         private bool UserExists(string name)
         {
-            var usersFile = _sys.GetEntry("sys/usr/users.info");
-            using (StreamReader reader = new StreamReader(usersFile.Open()))
+            try
             {
-                var users = reader.ReadToEnd().Split("\n");
-                foreach (var user in users)
+                var usersFile = _fileSystem.GetFile("sys/usr/users.info");
+                using (StreamReader reader = new StreamReader(usersFile.Open()))
                 {
-                    var userName = user.Split(":")[0];
-                    if (userName == name)
-                        return true;
+                    var users = reader.ReadToEnd().Split("\n");
+                    foreach (var user in users)
+                    {
+                        var userName = user.Split(":")[0];
+                        if (userName == name)
+                            return true;
+                    }
+                    return false;
                 }
-                return false;
+            }
+            catch (NullReferenceException e)
+            {
+                CommandLine.Error("System's broken: User files not found in /sys/usr/");
+                throw;
             }
         }
 
         // Try to find valid password for user in passwords file
         private bool ValidatePassword(string username, string userpass)
         {
-            var passwordsFile = _sys.GetEntry("sys/usr/passwd.info");
+            var passwordsFile = _fileSystem.GetFile("sys/usr/passwd.info");
             using (StreamReader reader = new StreamReader(passwordsFile.Open()))
             {
                 var passwords = reader.ReadToEnd().Split("\n");
@@ -135,31 +157,10 @@ namespace VirtualOS.OperatingSystem
                     // First value represents username, the second one is password
                     var passwordLine = password.Split(":");
                     if (passwordLine[0] == username)
-                        return userpass == passwordLine[1];
+                        return Encryptor.CompareWithHash(userpass, passwordLine[1]);
                 }
             }
             return false;
-        }
-
-        // Load user's groups to the _user variable
-        private void AddUserGroups()
-        {
-            var usersFile = _sys.GetEntry("sys/usr/users.info");
-            using (StreamReader reader = new StreamReader(usersFile.Open()))
-            {
-                // Split file by lines and loop through each user 
-                var users = reader.ReadToEnd().Split("\n");
-                foreach (var user in users)
-                {
-                    var userName = user.Split(":")[0];
-                    if (userName == _user.Name)
-                    {
-                        var userGroups = user.Split(":")[1].Split(", ");
-                        foreach (var group in userGroups)
-                            _user.AddInGroup(group);
-                    }
-                }
-            }
         }
     }
 }

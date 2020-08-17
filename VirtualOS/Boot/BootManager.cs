@@ -19,42 +19,39 @@ namespace VirtualOS.Boot
             {
                 // Prompt User how to start the system
                 var selected = SelectBootMode();
-                switch (selected)
+                if (selected == BootMode.InstallNew)
                 {
-                    case BootMode.InstallNew:
+                    SystemInstaller systemInstaller = new SystemInstaller();
+                    try
                     {
-                        SystemInstaller systemInstaller = new SystemInstaller();
-                        try
-                        {
-                            // After system's installed, restart the boot manager
-                            systemInstaller.Install();
-                            CommandLine.GetInput("Press enter to reboot");
-                            CommandLine.ClearScreen();
-                        }
-                        catch
-                        {
-                            CommandLine.Error("System not installed.\nRestarting Boot Manager.");
-                        }
-
-                        break;
+                        // After system's installed, restart the boot manager
+                        systemInstaller.Install();
+                        CommandLine.GetInput("Press enter to reboot");
+                        CommandLine.ClearScreen();
                     }
-                    case BootMode.BootExisting:
+                    catch
                     {
-                        // Start existing system with system .vos file
-                        var systemPath = SelectSystem();
-                        StartSystem(systemPath);
-                        break;
+                        CommandLine.Error("System not installed.\nRestarting Boot Manager.");
                     }
-                    case BootMode.ExitManager:
-                        CommandLine.ColorLog("Exiting Boot Manager.", ConsoleColor.DarkGreen);
-                        break;
                 }
-                return;
+                else if (selected == BootMode.BootExisting)
+                {
+                    // Start existing system with system .vos file and exit after system is shut down
+                    var systemPath = SelectSystem();
+                    StartSystem(systemPath);
+                    break;
+                }
+                else if (selected == BootMode.ExitManager)
+                {
+                    CommandLine.ColorLog("Exiting Boot Manager.", ConsoleColor.DarkGreen);
+                    break;
+                }
             }
         }
 
         private void StartSystem(string systemInfo)
         {
+            
             while (true)
             {
                 _system = new OperatingSystem.System(systemInfo);
@@ -73,6 +70,14 @@ namespace VirtualOS.Boot
                     CommandLine.ColorLog("System's rebooting...", ConsoleColor.DarkGreen);
                     Thread.Sleep(1000);
                 }
+                
+                if (exitCode == SystemExitCode.SystemBroken)
+                {
+                    CommandLine.Error("System could not run, shutting down...");
+                    break;
+                }
+               
+               
             }
            
         }
@@ -106,22 +111,12 @@ namespace VirtualOS.Boot
             while (true)
             {
                 var systemPath = CommandLine.GetInput("Path to .vos file");
-                try
-                {
-                    // If directory found, check for .vos files and run with the first one
-                    if (!systemPath.EndsWith(".vos"))
-                    {
-                        CommandLine.Error("Invalid type of system file!");
-                        continue;
-                    }
-                    else if (File.Exists(systemPath)) return systemPath;
-                    else CommandLine.Error("No System File found.");
-                }
-                catch
-                {
-                    CommandLine.Error($"Error while reading System File");
-                    throw;
-                }
+                // Return path to the system if file found
+                if (File.Exists(systemPath) && systemPath.EndsWith(".vos"))
+                    return systemPath;
+                
+                CommandLine.Error("No System File found.");
+                
             }
         }
     }
