@@ -37,7 +37,8 @@ namespace VirtualOS.Boot
                 else if (selected == BootMode.BootExisting)
                 {
                     // Start existing system with system .vos file and exit after system is shut down
-                    var systemPath = SelectSystem();
+                    // var systemPath = SelectSystem();
+                    var systemPath = "/home/umouse/vos/system.vos";
                     StartSystem(systemPath);
                     break;
                 }

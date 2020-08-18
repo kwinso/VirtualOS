@@ -10,23 +10,31 @@ namespace VirtualOS.OperatingSystem
     {
 
         private SystemUser _currentUser;
-        private string _currentLocation;
+        public  static string CurrentLocation;
         private readonly SystemInfo _info;
         private readonly List<Command> _commands;
         
         public CommandProcessor(SystemUser currentUser, SystemInfo info, ref FileSystem fs)
         {
             _currentUser = currentUser;
-            _currentLocation = currentUser.HomeDir;
+            CurrentLocation = currentUser.HomeDir;
             _info = info;
             
-            var changeDir = new ChangeDir(ref fs,  _currentLocation);
-            changeDir.Executed += delegate(string location) { _currentLocation = location;  };
+            var listFiles = new ListFiles(ref fs);
+            var changeDir = new ChangeDir(ref fs);
+            changeDir.Navigated += delegate(string location)
+            {
+                CurrentLocation = location;
+            };
+            changeDir.NavigatedToHome += delegate(string location)
+            {
+                CurrentLocation = _currentUser.HomeDir;
+            };
             
             _commands = new List<Command>
             {
                 changeDir,
-                new ListFiles(ref fs, ref _currentLocation), 
+                listFiles,
                 new NewFile(ref fs),
                 new NewDir(ref fs),
                 new RemoveFile(ref fs),
@@ -36,10 +44,10 @@ namespace VirtualOS.OperatingSystem
         }
         public CommandProcessorCode ProcessCommands()
         {
-            var location = _currentLocation;
-            if (_currentUser.HomeDir == _currentLocation) location = "*home*";
+            var location = CurrentLocation;
+            if (_currentUser.HomeDir == CurrentLocation) location = "*home*";
             var userCommand = CommandLine.UserPrompt(_currentUser.Name, _info.SystemName, location);
-            var args = GetArguments(userCommand);
+            var args = GetArguments(userCommand.Trim());
 
             
             // Using switch for very little commands
@@ -53,7 +61,7 @@ namespace VirtualOS.OperatingSystem
                 case "reboot":
                     return CommandProcessorCode.RebootRequest;
                 case "pwd":
-                    CommandLine.ColorLog($"You're here: {_currentLocation}");
+                    CommandLine.ColorLog($"You're here: {CurrentLocation}");
                     return CommandProcessorCode.Processed;
                 case "cls":
                 case "clear":

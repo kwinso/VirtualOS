@@ -25,6 +25,65 @@ namespace VirtualOS.OperatingSystem.Files
             }
         }
 
+        #region Paths Converting
+        public static string ToZipFormat(string path)
+        {
+            //  Remove slash at the begging if needed
+            if (path.StartsWith("/")) path = path.Substring(1);
+            // IF path does not represent a file and does not ends with slash (directories in zip have to end with slash)
+            if (!path.Contains(".") && !path.EndsWith("/")) path += "/";
+            return path;
+        }
+        public static string ToAbsolutePath(string path, string currentLocation)
+        {
+            
+            if (path.StartsWith(".."))
+            {
+                string pathToGo = "";
+                
+                if (path.StartsWith("../"))
+                    pathToGo = path.Substring(3);
+                
+                return OneLevelUp(currentLocation) + pathToGo;
+            }
+            // Relative paths to current position
+            if (path.StartsWith("."))
+            {
+                return NavigateRelative(path, currentLocation);
+            }
+
+            // Add slash if that's a folder and have no slash at end
+            if (!path.EndsWith("/") && !path.Contains(".")) path += "/";
+            // Absolute path
+            if (path.StartsWith("/")) return path;
+            else return currentLocation + path;
+        }
+        
+        private static string OneLevelUp(string location)
+        {
+            return GoToParent(location);
+        }
+        // Navigating relative to the current directory
+        private static string NavigateRelative(string path, string location)
+        {
+            // Stay were we were
+            if (path == ".") return location;
+            
+            var locationToGo = path.Substring(2);
+            locationToGo = location + locationToGo;
+            return locationToGo;
+        }
+        
+        // /path/to/file/ => /path/to/
+        private static string GoToParent(string path)
+        {
+            path = path.Substring(0, path.LastIndexOf("/"));
+            return path.Substring(0, path.LastIndexOf("/") + 1);;
+        }
+        
+
+        #endregion
+        
         public FileSystemUnit FindPath(string path)
         {
             return _rootDirectory.GetPath(path);
@@ -63,7 +122,7 @@ namespace VirtualOS.OperatingSystem.Files
                     foreach (var child in dir.Children)
                     {
                         var fileType = child.IsDirectory ? "<d>" : "<f>";
-                        info.Add($"{fileType} {child.Name} ({child.FullPath})");
+                        info.Add($"{fileType} {child.Name}");
                     }
                 }
             }
@@ -115,34 +174,36 @@ namespace VirtualOS.OperatingSystem.Files
         }
 
         // First parameter is a name of a file to ( create if not exists ) write to
-        public void WriteFile(List<string> parameters)
+        public void WriteFile(string text, string filepath, bool appending)
         {
-            var file = _fileSystem.GetEntry(parameters[0]) ?? _fileSystem.CreateEntry(parameters[0]);
+            var file = _fileSystem.GetEntry(filepath) ?? _fileSystem.CreateEntry(filepath);
 
-            // Remove file name and leave only text
-            parameters.RemoveAt(0);
+            if (appending) // Append text from new line
+            {
+                text = ReadFile(filepath) + "\n" + text;
+            }
+            else // Clear all text in file
+            {
+                Console.WriteLine("Clearing");
+                file.Delete();
+                file = _fileSystem.CreateEntry(filepath);
+            }
             using (StreamWriter writer = new StreamWriter(file.Open()))
             {
-                foreach (var word in parameters)
-                {
-                    writer.Write($"{word} ");
-                }
+                writer.Write(text);
             }
             CommandLine.ColorLog("Text is written to file.", ConsoleColor.Green);
         }
         
-        public void ReadFile(string name)
+        public string ReadFile(string name)
         {
             var file = _fileSystem.GetEntry(name);
             if (file == null)
-            {
-                CommandLine.Error($"File {name} is not found");
-                return;
-            }
+                return $"File {name} is not found";
 
             using (StreamReader reader = new StreamReader(file.Open()))
             {
-                CommandLine.DefaultLog(reader.ReadToEnd());
+                return reader.ReadToEnd();
             }
         }
         public void Close()

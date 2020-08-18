@@ -9,13 +9,11 @@ namespace VirtualOS.OperatingSystem.Commands
     {
 
         private readonly FileSystem _fs;
-        private readonly string _location;
-        public ListFiles(ref FileSystem fs, ref string location)
+        public ListFiles(ref FileSystem fs)
         {
             _aliases = new List<string>(new [] { "ls", "dir", "ld" });
             _helpMessage = "ld/dir/ls to show all files in system";
             _fs = fs;
-            _location = location;
         }
 
         public override void Execute(List<string> args)
@@ -27,31 +25,21 @@ namespace VirtualOS.OperatingSystem.Commands
             }
             
             List<string> info;
+            string path;
             
-            // IF parameters were provided
-            if (args.Count > 1 && !String.IsNullOrEmpty(args[1].Trim()))
+            if (args.Count > 1) path = args[1];
+            else path = CommandProcessor.CurrentLocation;
+
+            if (path.Contains(".") && !path.StartsWith("."))
             {
-                var path = args[1];
-                
-                // For shortcuts like "." and "./"
-                if (path.StartsWith("./") || path == ".") path = _location;
-                
-                if (path.Contains("."))
-                {
-                    CommandLine.Error("You can only list directories.");
-                    return;
-                }
-                
-                // For relative paths
-                if (!path.StartsWith("/")) path = _location + path;
-                
-                // For paths that do not end with slash, like "/home"
-                if (!path.EndsWith("/")) path += "/";
-                
-                info = _fs.ShowFiles(path);
+                CommandLine.Error("You can only list directories.");
+                return;
             }
-            else info = _fs.ShowFiles(_location);
-                
+            
+            path = FileSystem.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
+
+            info = _fs.ShowFiles(path);
+
             if (info.Count == 0)
                 CommandLine.DefaultLog("No files found.");
             else

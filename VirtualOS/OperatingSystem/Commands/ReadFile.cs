@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using VirtualOS.OperatingSystem.Files;
 
@@ -20,7 +21,24 @@ namespace VirtualOS.OperatingSystem.Commands
                 return;
             }
             // Second Params is a name of a file to read
-            _fs.ReadFile(args[1]);
+            if (args.Count < 1)
+            {
+                CommandLine.Error("Specify file to read.");
+                return;
+            }
+
+            var path = args[1];
+            path = FileSystem.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
+
+            if (path.EndsWith("/") || !path.Contains("."))
+            {
+                CommandLine.Error("You can only read files.");
+                return;
+            }
+            
+            path = FileSystem.ToZipFormat(path);
+            CommandLine.DefaultLog(_fs.ReadFile(path));
+            
         }
     }
 }
