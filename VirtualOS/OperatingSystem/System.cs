@@ -110,7 +110,8 @@ namespace VirtualOS.OperatingSystem
                         continue;
                     }
 
-                    _user = new SystemUser(name);
+                    var location = _fileSystem.FindPath($"/home/{name}/") != null ? $"/home/{name}/" : "/";
+                    _user = new SystemUser(name, location);
                     break;
                 }
             }

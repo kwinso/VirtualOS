@@ -10,17 +10,23 @@ namespace VirtualOS.OperatingSystem
     {
 
         private SystemUser _currentUser;
+        private string _currentLocation;
         private readonly SystemInfo _info;
         private readonly List<Command> _commands;
         
         public CommandProcessor(SystemUser currentUser, SystemInfo info, ref FileSystem fs)
         {
             _currentUser = currentUser;
+            _currentLocation = currentUser.HomeDir;
             _info = info;
-
+            
+            var changeDir = new ChangeDir(ref fs,  _currentLocation);
+            changeDir.Executed += delegate(string location) { _currentLocation = location;  };
+            
             _commands = new List<Command>
             {
-                new ListFiles(ref fs), 
+                changeDir,
+                new ListFiles(ref fs, ref _currentLocation), 
                 new NewFile(ref fs),
                 new NewDir(ref fs),
                 new RemoveFile(ref fs),
@@ -30,7 +36,9 @@ namespace VirtualOS.OperatingSystem
         }
         public CommandProcessorCode ProcessCommands()
         {
-            var userCommand = CommandLine.UserPrompt(_currentUser.Name, _info.SystemName);
+            var location = _currentLocation;
+            if (_currentUser.HomeDir == _currentLocation) location = "*home*";
+            var userCommand = CommandLine.UserPrompt(_currentUser.Name, _info.SystemName, location);
             var args = GetArguments(userCommand);
 
             
@@ -44,6 +52,9 @@ namespace VirtualOS.OperatingSystem
                     return CommandProcessorCode.Processed;
                 case "reboot":
                     return CommandProcessorCode.RebootRequest;
+                case "pwd":
+                    CommandLine.ColorLog($"You're here: {_currentLocation}");
+                    return CommandProcessorCode.Processed;
                 case "cls":
                 case "clear":
                     CommandLine.ClearScreen();
@@ -62,6 +73,7 @@ namespace VirtualOS.OperatingSystem
                     catch (Exception e)
                     {
                         CommandLine.Error("Error while executing command:\n" + e.Message);
+                        Console.WriteLine(e);
                         CommandLine.DefaultLog("You can send message to the developer about this bug.");
                         CommandLine.ColorLog("pythonisajoke@gmail.com", ConsoleColor.DarkCyan);
                     }

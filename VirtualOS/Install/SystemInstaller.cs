@@ -189,7 +189,8 @@ namespace VirtualOS.Install
                 
             using (StreamWriter writer = new StreamWriter(passwordsFile.Open()))
                 writer.WriteLine($"{userName}:{userPass}");
-                
+
+            _systemFile.CreateEntry($"home/{userName}/");
             CommandLine.ColorLog("User Created.", ConsoleColor.Green);
         }
         
