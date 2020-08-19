@@ -25,7 +25,7 @@ namespace VirtualOS.Encryption
         public static bool CompareWithHash(string plainText, string hash)
         {
             var hashedText = GenerateHash(plainText);
-            return (hashedText == hash);
+            return (hashedText.Trim() == hash.Trim());
         }
     }
 }
