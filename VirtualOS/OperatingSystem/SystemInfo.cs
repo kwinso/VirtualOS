@@ -6,7 +6,7 @@ namespace VirtualOS.OperatingSystem
     [Serializable]
     public class SystemInfo : ISerializable
     {
-        public string SystemName { get; set; }
+        public string SystemName { get; set; } // Name of the system specified by user.
 
         public SystemInfo(string name)
         {
@@ -20,7 +20,7 @@ namespace VirtualOS.OperatingSystem
         {
             SystemName = (string) info.GetValue("SystemName", typeof(string));
         }
-        // A parameterless constructor for serialization
+        // A parameter-less constructor for serialization
         public SystemInfo() {}
     }
 }

@@ -20,25 +20,32 @@ namespace VirtualOS.OperatingSystem
             CurrentLocation = currentUser.HomeDir;
             _info = info;
             
+            /*
+                COMMANDS HANDLERS INITIALIZATION 
+            */
+            
             var listFiles = new ListFiles(ref fs);
-            var changeDir = new ChangeDir(ref fs);
+            
+            var changeDir = new ChangeDirectory(ref fs);
+            
+            // Update location
             changeDir.Navigated += delegate(string location)
             {
                 CurrentLocation = location;
             };
+            // Set current location to current user home directory
             changeDir.NavigatedToHome += delegate(string location)
             {
                 CurrentLocation = _currentUser.HomeDir;
             };
-            
             _commands = new List<Command>
             {
                 changeDir,
                 listFiles,
-                new NewFile(ref fs),
-                new NewDir(ref fs),
+                new CreateFile(ref fs),
+                new CreateDirectory(ref fs),
                 new RemoveFile(ref fs),
-                new WriteToFile(ref fs),
+                new Echo(ref fs),
                 new ReadFile(ref fs),
             };
         }
@@ -46,11 +53,12 @@ namespace VirtualOS.OperatingSystem
         {
             var location = CurrentLocation;
             if (_currentUser.HomeDir == CurrentLocation) location = "*home*";
+            
             var userCommand = CommandLine.UserPrompt(_currentUser.Name, _info.SystemName, location);
-            var args = GetArguments(userCommand.Trim());
+            var args = GetArguments(userCommand.Trim()); // Split command to array of arguments
 
             
-            // Using switch for very little commands
+            // Commands that do not require arguments
             switch (args[0])
             {
                 case "shutdown":
@@ -60,7 +68,7 @@ namespace VirtualOS.OperatingSystem
                     return CommandProcessorCode.Processed;
                 case "reboot":
                     return CommandProcessorCode.RebootRequest;
-                case "pwd":
+                case "pwd": // Print Working Directory
                     CommandLine.ColorLog($"You're here: {CurrentLocation}");
                     return CommandProcessorCode.Processed;
                 case "cls":

@@ -6,7 +6,7 @@ namespace VirtualOS.OperatingSystem.Files
 {
     public class Directory : FileSystemUnit
     {
-        public List<FileSystemUnit> Children = new List<FileSystemUnit>();
+        public List<FileSystemUnit> Children = new List<FileSystemUnit>(); // Directory children
 
         public int ChildrenAmount => Children.Count;
 
@@ -17,10 +17,12 @@ namespace VirtualOS.OperatingSystem.Files
         public FileSystemUnit GetPath(string path)
         {
             if (FullPath == path) return this;
+            
             foreach (var child in Children)
             {
                 if (child.FullPath == path) return child;
-                if (child.IsDirectory)
+                
+                if (child.IsDirectory) // Check for path in child's children
                 {
                     var dir = child as Directory;
                     var found = dir.GetPath(path);
@@ -30,8 +32,8 @@ namespace VirtualOS.OperatingSystem.Files
 
             return null;
         }
-        
-        public Directory FindSubDirectory(string name)
+
+        private Directory FindSubDirectory(string name)
         {
             foreach (var dir in Children.Where(t => t is Directory ))
             {
@@ -39,14 +41,12 @@ namespace VirtualOS.OperatingSystem.Files
             }
             return null;
         }
-        public bool ContainsFile(string fileName)
-        {
-            foreach (var child in Children)
-            {
-                if (child.Name == fileName) return true;
-            }
 
-            return false;
+        public void UpdatePaths(List<String> filePaths)
+        {
+            // Updating dir children.
+            Children = new List<FileSystemUnit>();
+            ParseFilesFromEntries(filePaths);
         }
 
         public void ParseFilesFromEntries(List<string> filePaths)
@@ -59,13 +59,13 @@ namespace VirtualOS.OperatingSystem.Files
 
         /*
             This method receives a zip path to entry, separates path to the array by slashes.
-            IF file path ends with "/", that means that's a directory
+            IF path ends with "/", that means that's a directory
                 After separating one level directory, e.g. "path/", we'll get array ["path", ""]
                 Based on that data, we can say, that every path, that has length 2
                 is a one-level directory(does not have children), so, we can just add it to the parent child dir
                 
                 Every other files needed to be re-parsed on the next level of directories
-            IF File path contains ".", like every file, we need to do same operations that we do with directories,
+            IF path contains ".", like every file, we need to do same operations that we do with directories,
             but we need to create a file
         */
         private void ParseChild(string path)
@@ -82,7 +82,7 @@ namespace VirtualOS.OperatingSystem.Files
                     Children.Add(new Directory(fileName, FullPath + fileName));
                 }
                 else
-                    ParseToNextLevel(path);
+                    ParseToNextLevel(path); // Reparse it 'till it will not have parents
             }
             else if (path.Contains("."))
             {
@@ -100,9 +100,10 @@ namespace VirtualOS.OperatingSystem.Files
         */
         private void ParseToNextLevel(string path)
         {
-            var parentDirName = path.Split("/")[0] + "/";
+            var parentDirName = path.Split("/")[0] + "/"; // Finding very first parent in path
+            
             var parentDir = FindSubDirectory(parentDirName);
-            // Excluding parent dir name from path to parse only next level
+            // Excluding parent directory name from path to parse only next level
             parentDir?.ParseChild(path.Replace(parentDir.Name, ""));
         }
     }

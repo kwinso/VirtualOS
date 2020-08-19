@@ -2,21 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace VirtualOS.OperatingSystem.Files
 {
     public class FileSystem
     {
-        private readonly ZipArchive _fileSystem;
+        private readonly ZipArchive _systemFile; // File where system is stored
         private readonly Directory _rootDirectory;
-        
-        public List<string> Files
+
+        private List<string> Files
         {
             get
             {
                 List<string> files = new List<string>();
-                foreach (var entry in _fileSystem.Entries)
+                foreach (var entry in _systemFile.Entries)
                 {
                     files.Add(entry.FullName);
                 }
@@ -25,158 +25,99 @@ namespace VirtualOS.OperatingSystem.Files
             }
         }
 
-        #region Paths Converting
-        public static string ToZipFormat(string path)
-        {
-            //  Remove slash at the begging if needed
-            if (path.StartsWith("/")) path = path.Substring(1);
-            // IF path does not represent a file and does not ends with slash (directories in zip have to end with slash)
-            if (!path.Contains(".") && !path.EndsWith("/")) path += "/";
-            return path;
-        }
-        public static string ToAbsolutePath(string path, string currentLocation)
-        {
-            
-            if (path.StartsWith(".."))
-            {
-                string pathToGo = "";
-                
-                if (path.StartsWith("../"))
-                    pathToGo = path.Substring(3);
-                
-                return OneLevelUp(currentLocation) + pathToGo;
-            }
-            // Relative paths to current position
-            if (path.StartsWith("."))
-            {
-                return NavigateRelative(path, currentLocation);
-            }
-
-            // Add slash if that's a folder and have no slash at end
-            if (!path.EndsWith("/") && !path.Contains(".")) path += "/";
-            // Absolute path
-            if (path.StartsWith("/")) return path;
-            else return currentLocation + path;
-        }
-        
-        private static string OneLevelUp(string location)
-        {
-            return GoToParent(location);
-        }
-        // Navigating relative to the current directory
-        private static string NavigateRelative(string path, string location)
-        {
-            // Stay were we were
-            if (path == ".") return location;
-            
-            var locationToGo = path.Substring(2);
-            locationToGo = location + locationToGo;
-            return locationToGo;
-        }
-        
-        // /path/to/file/ => /path/to/
-        private static string GoToParent(string path)
-        {
-            path = path.Substring(0, path.LastIndexOf("/"));
-            return path.Substring(0, path.LastIndexOf("/") + 1);;
-        }
-        
-
-        #endregion
-        
-        public FileSystemUnit FindPath(string path)
+        public FileSystemUnit FindPath(string path) // Find path in the system.
         {
             return _rootDirectory.GetPath(path);
         }
 
         public FileSystem(string systemFile)
         {
-            _fileSystem = ZipFile.Open(systemFile, ZipArchiveMode.Update);
-            _rootDirectory = new Directory("/", "/");
-            _rootDirectory.ParseFilesFromEntries(Files);
+            _systemFile = ZipFile.Open(systemFile, ZipArchiveMode.Update); // Open file by the path
+            _rootDirectory = new Directory("", "/"); // Empty name, because it's a root of a system
+            _rootDirectory.ParseFilesFromEntries(Files); // To Create file tree from zip entries
         }
 
         public ZipArchiveEntry GetFile(string path)
         {
-            var file = _fileSystem.GetEntry(path);
-            if (file == null)
-            {
-                throw  new NullReferenceException();
-            }
-
-            return file;
+            return _systemFile.GetEntry(path);
         }
 
         public List<string> ShowFiles(string location)
         {
             // Variable for info about files
-            // Each line represents single file
+            // Each line represents single child
             var info = new List<string>();
             
             var dir =( Directory) _rootDirectory.GetPath(location);
             if (dir != null)
             {
-                if (dir.IsDirectory)
+                // Format of showing: <d> (for directory) / <f> (for file) <filename>
+                info.Add($"{dir.Name}: {dir.ChildrenAmount} files.");
+                foreach (var child in dir.Children)
                 {
-                    info.Add($"{dir.Name}: {dir.ChildrenAmount} files.");
-                    foreach (var child in dir.Children)
-                    {
-                        var fileType = child.IsDirectory ? "<d>" : "<f>";
-                        info.Add($"{fileType} {child.Name}");
-                    }
+                    var fileType = child.IsDirectory ? "<d>" : "<f>";
+                    info.Add($"{fileType} {child.Name}");
                 }
+            }
+            else
+            {
+                info.Add($"{location} does not exists.");
             }
             return info;
         }
 
-        public void CreateFiles(List<string> names, bool isDirectory)
+        public void CreateSystemUnit(string filepath)
         {
-            // If type of files is directory, then make slashes "/" is acceptable
-            var acceptableSymbols = new Regex(@"^[a-zA-Z0-9]+$");
-            if (isDirectory) acceptableSymbols = new Regex(@"^[a-zA-Z0-9/]+$");
-            
             // Check for good name and if file already exists
-            foreach (var name in names)
-            {
-                if (!acceptableSymbols.IsMatch(name))
-                {
-                    CommandLine.Error($"Invalid name for file: {name}");
-                    return;
-                }
 
-                if (_fileSystem.GetEntry(name) != null)
-                {
-                    CommandLine.Error($"File {name} already exists");
-                    return;
-                }
-            }
-            // If all files have good names, create
-            foreach (var name in names)
+            var existingFile = _rootDirectory.GetPath(filepath);
+            if (existingFile != null)
             {
-                if (!name.EndsWith("/") && isDirectory)
-                {
-                    _fileSystem.CreateEntry(name + "/");
-                    continue;
-                }
-                _fileSystem.CreateEntry(name);
+                CommandLine.Error($"File {filepath} already exists. Not created.");
+                return;
             }
 
-            CommandLine.ColorLog("Files created", ConsoleColor.DarkBlue);
+            var zipFormatPath = Path.ToZipFormat(filepath);
+            
+            // Add created file to the system
+            _systemFile.CreateEntry(zipFormatPath);
+            _rootDirectory.UpdatePaths(Files); // Update info about directories
         }
 
-        public void RemoveFiles(List<string> files)
+        public void RemoveFile(string path, bool isDirectory)
         {
-            foreach (var file in files)
+            if (isDirectory)
             {
-                _fileSystem.GetEntry(file)?.Delete();
+                path = Path.ToZipFormat(path); // Convert path to directory into zip format
+                
+                foreach (var filepath in Files)
+                {
+                    // Delete all files that was in deleted directory
+                    if (filepath.StartsWith(path)) 
+                    {
+                        var fileToDelete = _systemFile.GetEntry(filepath);
+                        fileToDelete?.Delete();
+                    }
+                }
             }
-            CommandLine.ColorLog("Files deleted.", ConsoleColor.DarkGreen);
-        }
+            else
+            {
+                var file = _systemFile.GetEntry(Path.ToZipFormat(path));
+                if (file == null)
+                {
+                    CommandLine.Error($"Cannot remove {path}. File or directory does not exists. Skipped.");
+                    return;
+                }
+                file.Delete();
+            }
 
-        // First parameter is a name of a file to ( create if not exists ) write to
-        public void WriteFile(string text, string filepath, bool appending)
+            _rootDirectory.UpdatePaths(Files); // Update info about directories
+        }
+        
+        public void WriteToFile(string text, string filepath, bool appending)
         {
-            var file = _fileSystem.GetEntry(filepath) ?? _fileSystem.CreateEntry(filepath);
+            // Create file if not exists
+            var file = _systemFile.GetEntry(filepath) ?? _systemFile.CreateEntry(filepath);
 
             if (appending) // Append text with new line if there's already some text
             {
@@ -187,31 +128,29 @@ namespace VirtualOS.OperatingSystem.Files
             else // Recreate file
             {
                 file.Delete();
-                file = _fileSystem.CreateEntry(filepath);
+                file = _systemFile.CreateEntry(filepath);
             }
-            using (StreamWriter writer = new StreamWriter(file.Open()))
+            using (var writer = new StreamWriter(file.Open()))
             {
                 writer.Write(text);
             }
-            CommandLine.ColorLog("Text is written to file.", ConsoleColor.Green);
+
+            _rootDirectory.UpdatePaths(Files); // Update info about directories
         }
         
         public string ReadFile(string name)
         {
-            var file = _fileSystem.GetEntry(name);
+            var file = _systemFile.GetEntry(name);
             if (file == null)
                 return $"File {name} is not found";
 
-            using (StreamReader reader = new StreamReader(file.Open()))
-            {
-                return reader.ReadToEnd();
-            }
+            using var reader = new StreamReader(file.Open());
+            return reader.ReadToEnd();
         }
-        
-        // TODO: Run this function on unpredicted system shutdown.
+
         public void Close()
         {
-            _fileSystem.Dispose();
+            _systemFile.Dispose(); // Save zip archive state.
         }
     }
 }

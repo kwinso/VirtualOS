@@ -20,7 +20,7 @@ namespace VirtualOS.OperatingSystem.Commands
                 CommandLine.DefaultLog(_helpMessage);
                 return;
             }
-            // Second Params is a name of a file to read
+            // Second Param is a name of a file to read
             if (args.Count < 1)
             {
                 CommandLine.Error("Specify file to read.");
@@ -28,15 +28,15 @@ namespace VirtualOS.OperatingSystem.Commands
             }
 
             var path = args[1];
-            path = FileSystem.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
+            path = Path.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
 
-            if (path.EndsWith("/") || !path.Contains("."))
+            if (!Path.IsFile(path, CommandProcessor.CurrentLocation))
             {
                 CommandLine.Error("You can only read files.");
                 return;
             }
             
-            path = FileSystem.ToZipFormat(path);
+            path = Path.ToZipFormat(path);
             CommandLine.DefaultLog(_fs.ReadFile(path));
             
         }

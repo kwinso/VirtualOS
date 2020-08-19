@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using VirtualOS.OperatingSystem.Files;
 
@@ -21,7 +22,37 @@ namespace VirtualOS.OperatingSystem.Commands
                 CommandLine.DefaultLog(_helpMessage);
                 return;
             }
-            _fs.RemoveFiles(args);
+
+            // Delete all file in directory.
+            var isReversive = false;
+            for (var i = 0; i < args.Count; i++)
+            {
+                if (args[i] == "-r")
+                {
+                    isReversive = true;
+                    args.RemoveAt(i);
+                }
+                
+            }
+
+            var paths = new List<string>(); // Paths to delete.
+            
+            for (var i = 0; i < args.Count; i++)
+            {
+                var path = Path.ToAbsolutePath(args[i], CommandProcessor.CurrentLocation);
+                if (!Path.IsFile(path, CommandProcessor.CurrentLocation) && !isReversive)
+                {
+                    CommandLine.Error($"{path} is a directory. Specify the \"-r\" parameter to remove all contents in directory.");
+                    return;
+                }
+
+                paths.Add(path);
+            }
+
+            foreach (var filepath in paths)
+                _fs.RemoveFile(filepath, !Path.IsFile(filepath, CommandProcessor.CurrentLocation));
+            
+            CommandLine.ColorLog("Done", ConsoleColor.DarkGreen);
         }
     }
 }

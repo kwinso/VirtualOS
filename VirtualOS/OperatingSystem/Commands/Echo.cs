@@ -3,16 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Enumeration;
 using VirtualOS.OperatingSystem.Files;
+using Path = VirtualOS.OperatingSystem.Files.Path;
 
 namespace VirtualOS.OperatingSystem.Commands
 {
-    public class WriteToFile : Command
+    public class Echo : Command
     {
         private readonly FileSystem _fs;
-        public WriteToFile(ref FileSystem fs)
+        public Echo(ref FileSystem fs)
         {
-            _aliases = new List<string>(new [] { "write" });
-            _helpMessage = "write to write to file.\nWrite <your text> > <file name> -> Rewrite the file\nWrite <your text> >> <file name> -> Append text to file";
+            _aliases = new List<string>(new [] { "write", "echo" });
+            _helpMessage = "write/echo to write to file.\nWrite <your text> > <file name> -> Rewrite the file\nWrite <your text> >> <file name> -> Append text to file";
             _fs = fs;
         }
         
@@ -28,15 +29,19 @@ namespace VirtualOS.OperatingSystem.Commands
 
             // removing command name
             args.RemoveAt(0);
+
+            string text = "";
             
-            // Required arguments: <command name> (removed) <text> (at least one word) <write modifier (> or >>) <file name>
-            if (args.Count < 3 || !args.Contains(">>") && !args.Contains(">") )
+            if (!args.Contains(">>") && !args.Contains(">"))
             {
-                CommandLine.Error("Invalid Syntax: write <text> >> <file>.\nSee \"write -h\" for more info.");
+                foreach (var word in args)
+                {
+                    text += word;
+                }
+                CommandLine.DefaultLog(text);
                 return;
             }
 
-            string text = ""; // Text to write
             string filename = ""; // Name of a file to write to
             bool isAppending = true; // Text will be append to existing text by default
             for(int i = 0; i < args.Count; i++)
@@ -56,10 +61,16 @@ namespace VirtualOS.OperatingSystem.Commands
                 return;
             }
 
-            var path = FileSystem.ToAbsolutePath(filename.Trim(), CommandProcessor.CurrentLocation);
-            path = FileSystem.ToZipFormat(path);
+            var path = Path.ToAbsolutePath(filename.Trim(), CommandProcessor.CurrentLocation);
+            path = Path.ToZipFormat(path);
+            
+            if (!Path.IsFile(path, CommandProcessor.CurrentLocation))
+            {
+                CommandLine.Error("You cannot write to directories.");
+                return;
+            }
 
-            _fs.WriteFile(text, path, isAppending);
+            _fs.WriteToFile(text, path, isAppending);
         }
     }
 }

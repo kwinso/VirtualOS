@@ -6,6 +6,7 @@ namespace VirtualOS.Encryption
 {
     public static class Encryptor
     {
+        // Converting plain text to the SHA-256 hash.
         public static string GenerateHash(string plainText)
         {
             StringBuilder Sb = new StringBuilder();

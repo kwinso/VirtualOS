@@ -4,55 +4,56 @@ using VirtualOS.OperatingSystem.Files;
 
 namespace VirtualOS.OperatingSystem.Commands
 {
-    public class ChangeDir : Command
+    public class ChangeDirectory : Command
     {
-        private readonly FileSystem _fs;
-        private string _location;
+        private readonly FileSystem _fs; 
         
-        public ChangeDir(ref FileSystem fs)
+        public ChangeDirectory(ref FileSystem fs)
         {
-            _aliases = new List<string>(new [] { "cd" });
+            _aliases = new List<string>() { "cd" };
             _helpMessage = "cd to change current directory";
             _fs = fs;
-            _location = CommandProcessor.CurrentLocation;
         }
 
-        public delegate void ChangeHandler(string location);
+        public delegate void NavigateHandler(string location);
 
-        public event ChangeHandler Navigated;
-        public event ChangeHandler NavigatedToHome;
+        public event NavigateHandler Navigated; // Will be called when user navigated
+        public event NavigateHandler NavigatedToHome; 
 
         public override void Execute(List<string> args)
         {
+            // Back to the current user's home
             if (args.Count == 1)
             {
                 NavigatedToHome?.Invoke("");
                 return;
             }
 
+            // Required path to go
             var path = args[1];
             
-            if (path.Contains(".") && !path.StartsWith("."))
+            // If path contains "." and it's not relative path, e.g ./here or ../top
+            if (Path.IsFile(path, CommandProcessor.CurrentLocation))
             {
                 CommandLine.Error("You cannot go to files.");
                 return;
             }
-            
-            Navigate(FileSystem.ToAbsolutePath(path, CommandProcessor.CurrentLocation));
+            // Convert to the absolute path and navigate.
+            Navigate(path);
 
         }
 
-        public void Navigate(string path)
+        private void Navigate(string path)
         {
+            path = Path.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
             var file = _fs.FindPath(path);
             if (file == null || !file.IsDirectory)
             {
                 CommandLine.Error($"No directory found in {path}");
                 return;
             }
-
-            _location = path;
-            Navigated?.Invoke(_location);
+            
+            Navigated?.Invoke(path);
         } 
 
         

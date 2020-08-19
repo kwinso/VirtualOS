@@ -37,8 +37,7 @@ namespace VirtualOS.Boot
                 else if (selected == BootMode.BootExisting)
                 {
                     // Start existing system with system .vos file and exit after system is shut down
-                    // var systemPath = SelectSystem();
-                    var systemPath = "/home/umouse/vos/system.vos";
+                    var systemPath = SelectSystem();
                     StartSystem(systemPath);
                     break;
                 }
@@ -57,7 +56,6 @@ namespace VirtualOS.Boot
             {
                 _system = new OperatingSystem.System(systemInfo);
                 
-                // System return status code when it shuts down
                 var exitCode = _system.Start();
 
                 if (exitCode == SystemExitCode.Shutdown)
@@ -77,16 +75,13 @@ namespace VirtualOS.Boot
                     CommandLine.Error("System could not run, shutting down...");
                     break;
                 }
-               
-               
             }
            
         }
 
         private BootMode SelectBootMode()
         {
-            CommandLine.DefaultLog(
-                "System boot mode:\n1. Select existing VirtualOS.\n2. Install new VirtualOS\n3.Exit Boot Manager");
+            CommandLine.DefaultLog("System boot mode:\n1. Select existing VirtualOS.\n2. Install new VirtualOS\n3.Exit Boot Manager");
             while (true)
             {
                 var input = CommandLine.GetInput("Mode");
@@ -99,7 +94,7 @@ namespace VirtualOS.Boot
                     case "3":
                         return BootMode.ExitManager;
                     default:
-                        CommandLine.Error("Invalid Option. Select number of option.");
+                        CommandLine.Error("Invalid Option. Select number.");
                         break;
                 }
             }
@@ -112,12 +107,12 @@ namespace VirtualOS.Boot
             while (true)
             {
                 var systemPath = CommandLine.GetInput("Path to .vos file");
-                // Return path to the system if file found
+                
+                // The valid path is path where .vos extension is specified.
                 if (File.Exists(systemPath) && systemPath.EndsWith(".vos"))
                     return systemPath;
                 
                 CommandLine.Error("No System File found.");
-                
             }
         }
     }

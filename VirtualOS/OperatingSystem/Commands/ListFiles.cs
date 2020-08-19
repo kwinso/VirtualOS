@@ -11,7 +11,7 @@ namespace VirtualOS.OperatingSystem.Commands
         private readonly FileSystem _fs;
         public ListFiles(ref FileSystem fs)
         {
-            _aliases = new List<string>(new [] { "ls", "dir", "ld" });
+            _aliases = new List<string>() { "ls", "dir", "ld" };
             _helpMessage = "ld/dir/ls to show all files in system";
             _fs = fs;
         }
@@ -24,31 +24,25 @@ namespace VirtualOS.OperatingSystem.Commands
                 return;
             }
             
-            List<string> info;
-            string path;
+            List<string> info; // Info about each file by lines.
+            string path; // Path to list.
             
+            // If command called without arguments - list current directory
             if (args.Count > 1) path = args[1];
             else path = CommandProcessor.CurrentLocation;
 
-            if (path.Contains(".") && !path.StartsWith("."))
+            if (Path.IsFile(path, CommandProcessor.CurrentLocation))
             {
                 CommandLine.Error("You can only list directories.");
                 return;
             }
             
-            path = FileSystem.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
+            path = Path.ToAbsolutePath(path, CommandProcessor.CurrentLocation);
 
             info = _fs.ShowFiles(path);
 
-            if (info.Count == 0)
-                CommandLine.DefaultLog("No files found.");
-            else
-            {
-                foreach (var line in info)
-                {
-                    CommandLine.DefaultLog(line);
-                }
-            }
+            foreach (var line in info)
+                CommandLine.DefaultLog(line);
         }
     }
 }
