@@ -1,2 +1,2 @@
 # VirtualOS
-Virtual Operating System written in C#
+Unix-like terminal for Zip Archives written in C#.
