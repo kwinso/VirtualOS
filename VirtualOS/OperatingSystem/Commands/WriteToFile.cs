@@ -16,7 +16,7 @@ namespace VirtualOS.OperatingSystem.Commands
             _fs = fs;
         }
         
-        // TODO: File does not update if specified more than one word in name.
+        // TODO: Writing text with double quotes.
         public override void Execute(List<string> args)
         {
             // remove command name and proceed only with params
@@ -29,27 +29,25 @@ namespace VirtualOS.OperatingSystem.Commands
             // removing command name
             args.RemoveAt(0);
             
+            // Required arguments: <command name> (removed) <text> (at least one word) <write modifier (> or >>) <file name>
             if (args.Count < 3 || !args.Contains(">>") && !args.Contains(">") )
             {
                 CommandLine.Error("Invalid Syntax: write <text> >> <file>.\nSee \"write -h\" for more info.");
                 return;
             }
 
-            string text = "";
-            string filename = null;
-            bool isAppending = false;
-            for(int i = 0; i <= args.Count; i++)
+            string text = ""; // Text to write
+            string filename = ""; // Name of a file to write to
+            bool isAppending = true; // Text will be append to existing text by default
+            for(int i = 0; i < args.Count; i++)
             {
-                if (args[i] != ">>" && args[i] != ">")
+                if (args[i] == ">>" || args[i] == ">") // End loop if write modifier is detected
                 {
-                    text += args[i] + " ";
-                    args.RemoveAt(i);                    
+                    isAppending = args[i].Trim() == ">>"; // Set type of writing
+                    filename = args[i + 1]; // File name must be next word(path) after the write modifier
+                    break;
                 }
-
-                isAppending = args[i].Trim() == ">>";
-                filename = args[i + 1];
-                break;
-
+                text += args[i] + " "; // else, add word to the text
             }
 
             if (String.IsNullOrEmpty(filename))

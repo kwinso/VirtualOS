@@ -178,13 +178,14 @@ namespace VirtualOS.OperatingSystem.Files
         {
             var file = _fileSystem.GetEntry(filepath) ?? _fileSystem.CreateEntry(filepath);
 
-            if (appending) // Append text from new line
+            if (appending) // Append text with new line if there's already some text
             {
-                text = ReadFile(filepath) + "\n" + text;
+                var previousText = ReadFile(filepath);
+                if (!String.IsNullOrEmpty(previousText))
+                    text = ReadFile(filepath) + "\n" + text;
             }
-            else // Clear all text in file
+            else // Recreate file
             {
-                Console.WriteLine("Clearing");
                 file.Delete();
                 file = _fileSystem.CreateEntry(filepath);
             }
@@ -206,6 +207,8 @@ namespace VirtualOS.OperatingSystem.Files
                 return reader.ReadToEnd();
             }
         }
+        
+        // TODO: Run this function on unpredicted system shutdown.
         public void Close()
         {
             _fileSystem.Dispose();

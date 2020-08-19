@@ -10,10 +10,5 @@ namespace VirtualOS
             BootManager bootManager = new BootManager();
             bootManager.Boot();
         }
-
-        private static void RestartOs()
-        {
-            
-        }
     }
 }
