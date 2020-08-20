@@ -81,7 +81,7 @@ namespace VirtualOS.Boot
 
         private BootMode SelectBootMode()
         {
-            CommandLine.DefaultLog("System boot mode:\n1. Select existing VirtualOS.\n2. Install new VirtualOS\n3.Exit Boot Manager");
+            CommandLine.DefaultLog("System boot mode:\n1. Select existing VirtualOS.\n2. Install new VirtualOS\n3. Exit Boot Manager");
             while (true)
             {
                 var input = CommandLine.GetInput("Mode");
