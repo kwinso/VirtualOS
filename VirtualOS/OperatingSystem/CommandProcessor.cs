@@ -51,7 +51,8 @@ namespace VirtualOS.OperatingSystem
         }
         public CommandProcessorCode ProcessCommands()
         {
-            var location = CurrentLocation;
+            var location = Path.ShowCurrentDirectory(CurrentLocation);
+
             if (_currentUser.HomeDir == CurrentLocation) location = "*home*";
             
             var userCommand = CommandLine.UserPrompt(_currentUser.Name, _info.SystemName, location);

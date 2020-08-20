@@ -27,12 +27,12 @@ namespace VirtualOS.Install
         
         public void Install()
         {
-            CommandLine.ColorLog("Installing VirtualOS", ConsoleColor.Green);
+            CommandLine.ColorLog("Welcome to the VirtualOS System Installer.", ConsoleColor.Cyan);
             try
             {
                 DefineSystemInfo();
                 
-                CommandLine.ColorLog("Installing VirtualOS System...", ConsoleColor.Green);
+                CommandLine.ColorLog("Installing VirtualOS System...", ConsoleColor.Cyan);
                 
                 CreateSystemFile();
                 InstallSystemFiles();
@@ -122,7 +122,7 @@ namespace VirtualOS.Install
             foreach (var dir in _defaultDirectories)
                 _systemFile.CreateEntry($"{dir}/");
             
-            CommandLine.ColorLog("System Directories Created.", ConsoleColor.Green);
+            CommandLine.ColorLog("System Directories Created.", ConsoleColor.Cyan);
             CreateSystemInfoFile();
             CreateUsersDirectory();
         }
@@ -176,11 +176,11 @@ namespace VirtualOS.Install
         */
         private void ConfigureSystem()
         {
-            CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Green);
+            CommandLine.ColorLog("System already installed, few more things.", ConsoleColor.Cyan);
             
             CreateUser();
             
-            CommandLine.ColorLog("System successfully configured.", ConsoleColor.Green);
+            CommandLine.ColorLog("System successfully configured.", ConsoleColor.Cyan);
         }
         
         private void CreateUser()
@@ -204,7 +204,7 @@ namespace VirtualOS.Install
 
             // Creating user's home directory.
             _systemFile.CreateEntry($"home/{userName}/");
-            CommandLine.ColorLog("User Created.", ConsoleColor.Green);
+            CommandLine.ColorLog("User Created.", ConsoleColor.Cyan);
         }
         
         private void GetUserInfo(out string userName, out string userPass)
@@ -218,6 +218,12 @@ namespace VirtualOS.Install
                 if (!acceptableNameSymbols.IsMatch(userName))
                 {
                     CommandLine.Error("Username can only contain lowercase alphabetic characters.");
+                    continue;
+                }
+
+                if (userName == "root")
+                {
+                    CommandLine.Error("You cannot create user with the name of a \"root\".");
                     continue;
                 }
                 

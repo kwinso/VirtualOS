@@ -44,7 +44,7 @@ namespace VirtualOS.OperatingSystem
                 GetSystemInfo();
                 LoginUser();
             }
-            catch (Exception e)
+            catch
             {
                 CommandLine.Error("An error occured while starting the system;");
                 return SystemExitCode.SystemBroken;
@@ -86,7 +86,7 @@ namespace VirtualOS.OperatingSystem
             catch (NullReferenceException e)
             {
                 CommandLine.Error("System's broken: No system information file.");
-                throw;
+                throw e;
             }
         }
         
@@ -144,7 +144,7 @@ namespace VirtualOS.OperatingSystem
             catch (NullReferenceException e)
             {
                 CommandLine.Error("System's broken: User files not found in /sys/usr/");
-                throw;
+                throw e;
             }
         }
 

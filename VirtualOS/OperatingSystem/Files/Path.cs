@@ -66,8 +66,22 @@ namespace VirtualOS.OperatingSystem.Files
             locationToGo = location + locationToGo;
             return locationToGo;
         }
+
+
+        // String will be modified from /path/to/file/ to file
+        public static string ShowCurrentDirectory(string path)
+        {
+            // Prevent renaming root directory
+            if (path == "/") return path;
+            // Remove last slash from the path
+            if (path.EndsWith("/"))
+                path = path.Substring(0, path.LastIndexOf("/"));
+            
+            // Leave only last directory.
+            return path.Substring(path.LastIndexOf("/") + 1);
+        }
         
-        // /path/to/file/ => /path/to/
+        // String will be modified from /path/to/file/ to /path/to/
         private static string GoToParent(string path)
         {
             path = path.Substring(0, path.LastIndexOf("/"));

@@ -103,7 +103,7 @@ namespace VirtualOS.Boot
         // Find system file and return path to this file
         private string SelectSystem()
         {
-            CommandLine.ColorLog("Select path to\nVirtualOS System folder\nor to\nSystems Config", ConsoleColor.Green);
+            CommandLine.ColorLog("Select path to the .vos file.", ConsoleColor.Cyan);
             while (true)
             {
                 var systemPath = CommandLine.GetInput("Path to .vos file");
