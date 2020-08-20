@@ -26,9 +26,11 @@ To execute the program simply run `dotnet run`
 In the Boot Manager, select second option.  
 `Mode: 2`  
 Then, answer the questions.
+
 ![VirtualOS](https://i.imgur.com/vLrfvB7.png "Installation Example")
 
-Your system is installed.  
+**Your system is installed.**  
+
 Now, you can find it in installation directory with the name of a system. For me it's `/home/umouse/vos/example.vos`  
 
 Don't worry about .vos extension. It's just a zip archive. But Boot Manager recognizes only .vos files. 
