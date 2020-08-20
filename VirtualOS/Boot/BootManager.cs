@@ -107,9 +107,10 @@ namespace VirtualOS.Boot
             while (true)
             {
                 var systemPath = CommandLine.GetInput("Path to .vos file");
+                // Add extension to the file if not provided
+                if (!systemPath.EndsWith(".vos")) systemPath += ".vos";
                 
-                // The valid path is path where .vos extension is specified.
-                if (File.Exists(systemPath) && systemPath.EndsWith(".vos"))
+                if (File.Exists(systemPath))
                     return systemPath;
                 
                 CommandLine.Error("No System File found.");

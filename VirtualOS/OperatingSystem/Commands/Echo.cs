@@ -12,8 +12,8 @@ namespace VirtualOS.OperatingSystem.Commands
         private readonly FileSystem _fs;
         public Echo(ref FileSystem fs)
         {
-            _aliases = new List<string>(new [] { "write", "echo" });
-            _helpMessage = "write/echo to write to file.\nWrite <your text> > <file name> -> Rewrite the file\nWrite <your text> >> <file name> -> Append text to file";
+            _aliases = new List<string>() { "echo" };
+            _helpMessage = "echo to echo text / write to file.\nEcho <text> -> Print text to the console.\nEcho <your text> > <file name> -> Rewrite the file\n Echo <your text> >> <file name> -> Append text to file";
             _fs = fs;
         }
         
